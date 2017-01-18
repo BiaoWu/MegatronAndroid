@@ -1,3 +1,5 @@
 <resources>
   <string name="app_name">威震天</string>
+
+  <string name="bt_not_supported">您的设备不支持蓝牙</string>
 </resources>
