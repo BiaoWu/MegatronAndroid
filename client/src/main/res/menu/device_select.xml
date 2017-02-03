@@ -3,8 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="zhangphil.bluetooth.MainActivity">
+
   <item
-      android:id="@+id/action_discovering"
-      android:title="重新扫描"
+      android:id="@+id/start_discovering"
+      android:orderInCategory="1"
+      android:title="@string/start_discovering"
+      app:showAsAction="never"/>
+
+  <item
+      android:id="@+id/stop_discovering"
+      android:orderInCategory="2"
+      android:title="@string/stop_discovering"
       app:showAsAction="never"/>
 </menu>

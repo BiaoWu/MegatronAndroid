@@ -2,4 +2,12 @@
   <string name="app_name">威震天</string>
 
   <string name="bt_not_supported">您的设备不支持蓝牙</string>
+  <string name="select_device">选择设备</string>
+  <string name="connect">连接</string>
+  <string name="disconnect">断开连接</string>
+  <string name="toggle_guide_line">切换辅助线</string>
+  <string name="pair">配对</string>
+  <string name="start_discovering">开始扫描</string>
+  <string name="stop_discovering">停止扫描</string>
+  <string name="video_area">视频区域</string>
 </resources>
