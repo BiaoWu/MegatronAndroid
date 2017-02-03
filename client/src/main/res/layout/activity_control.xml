@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.percent.PercentRelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="org.biao.megatron.ControlActivity"
+    >
+
+  <android.support.v7.widget.Toolbar
+      android:id="@+id/toolbar"
+      android:layout_width="match_parent"
+      android:layout_height="?attr/actionBarSize"
+      android:background="?attr/colorPrimary"
+      app:navigationIcon="@mipmap/ic_launcher"
+      app:title="@string/app_name"
+      />
+
+  <FrameLayout
+      android:id="@+id/video_area"
+      android:layout_below="@id/toolbar"
+      app:layout_aspectRatio="178%"
+      app:layout_widthPercent="100%"
+      >
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/video_mask"
+        android:gravity="center"
+        android:text="@string/video_area"
+        android:textColor="@color/titleTextColor"
+        />
+  </FrameLayout>
+
+  <android.support.percent.PercentFrameLayout
+      android:id="@+id/joystick_area"
+      android:layout_alignParentBottom="true"
+      app:layout_heightPercent="30%"
+      app:layout_widthPercent="100%"
+      >
+
+    <com.biao.joystick.JoystickView
+        android:id="@+id/joystickView"
+        android:layout_alignParentBottom="true"
+        app:layout_heightPercent="100%"
+        app:layout_widthPercent="60%"
+        />
+  </android.support.percent.PercentFrameLayout>
+
+
+  <TextView
+      android:id="@+id/device_info"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_above="@id/joystick_area"
+      android:layout_below="@id/video_area"
+      android:padding="8dp"
+      tools:text="请先选择设备，然后连接"
+      />
+
+</android.support.percent.PercentRelativeLayout>

@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -23,13 +24,14 @@ import com.biao.badapter.BDataSource;
 import com.biao.badapter.OnItemClickListener;
 import com.biao.badapter.itemdelegate.simple.BSimpleItemDelegate;
 import com.biao.badapter.itemdelegate.simple.BSimpleViewHolder;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Set;
 
-public class MainActivity extends AppCompatActivity {
-  private static final String TAG = "MainActivity";
-  private static final boolean debug = BuildConfig.DEBUG && true;
+public class DeviceSelectActivity extends AppCompatActivity {
+  public static final String RESULT_BLUETOOTH_DEVICE = "bluetooth_device";
+
+  private static final String TAG = DeviceSelectActivity.class.getSimpleName();
+  private static final boolean debug = BuildConfig.DEBUG;
 
   private static final int request_action_discovering = 52066;
   private static final int request_find_paired = 52660;
@@ -37,32 +39,25 @@ public class MainActivity extends AppCompatActivity {
   private BAdapter adapter;
   private BDataSource<BluetoothDevice> dataSource = new BDataSource<>();
 
-  private boolean isDiscovering = false;
-
   private BroadcastReceiver receiver = new BroadcastReceiver() {
     public void onReceive(Context context, Intent intent) {
       String action = intent.getAction();
       if (debug) Log.d(TAG, "action -> " + action);
-      if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-        BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
-        dataSource.add(device);
-        adapter.notifyItemInserted(dataSource.size() - 1);
-      } else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
-        int bond = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE);
-        BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+      BluetoothDevice device = null;
+      switch (action) {
+        case BluetoothDevice.ACTION_FOUND:
+        case BluetoothDevice.ACTION_BOND_STATE_CHANGED:
+          device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+          break;
+      }
+      if (device != null) {
         int i = dataSource.getDataList().indexOf(device);
-        if (debug) Log.d(TAG, "bond -> " + bond + ", device -> " + device + ", index -> " + i);
-        switch (bond) {
-          case BluetoothDevice.BOND_NONE:
-          case BluetoothDevice.BOND_BONDED:
-            if (i < 0) {
-              dataSource.add(device);
-              adapter.notifyItemInserted(dataSource.size() - 1);
-            } else {
-              adapter.notifyItemChanged(i);
-            }
-            break;
+        if (i < 0) {
+          dataSource.add(device);
+          adapter.notifyItemInserted(dataSource.size() - 1);
+        } else {
+          adapter.notifyItemChanged(i);
         }
       }
     }
@@ -73,12 +68,10 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
 
+    setContentView(R.layout.activity_device_select);
     setupToolbar();
-
     findPaired();
-
     setupRv();
 
     IntentFilter filter = new IntentFilter();
@@ -126,30 +119,33 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void startDiscovery() {
-    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-    if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-      if (debug) Log.d(TAG, "start bluetoothAdapter is null or not enable !");
+    BluetoothAdapter bluetoothAdapter = getBluetoothAdapter();
+    if (bluetoothAdapter == null) {
       return;
     }
 
-    isDiscovering = true;
+    if (!bluetoothAdapter.isEnabled()) {
+      startBluetoothEnableRequest(request_action_discovering);
+      return;
+    }
+
     if (bluetoothAdapter.startDiscovery()) {
+      if (debug) Log.d(TAG, "start discovery success !");
       dataSource.removeAll();
       findPaired();
       adapter.notifyDataSetChanged();
-      if (debug) Log.d(TAG, "start discovery success !");
+      updateMenu(true);
     } else {
       if (debug) Log.d(TAG, "start discovery failed !");
     }
   }
 
   private void stopDiscovery() {
-    isDiscovering = false;
-
     BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
       if (bluetoothAdapter.cancelDiscovery()) {
         if (debug) Log.d(TAG, "stop discovery success !");
+        updateMenu(false);
       } else {
         if (debug) Log.d(TAG, "stop discovery failed !");
       }
@@ -175,30 +171,16 @@ public class MainActivity extends AppCompatActivity {
 
   private void setupToolbar() {
     toolbar = (Toolbar) findViewById(R.id.toolbar);
-    toolbar.inflateMenu(R.menu.main);
+    toolbar.inflateMenu(R.menu.device_select);
     toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
       @Override
       public boolean onMenuItemClick(MenuItem item) {
         switch (item.getItemId()) {
-          case R.id.action_discovering:
-            BluetoothAdapter bluetoothAdapter = getBluetoothAdapter();
-            if (bluetoothAdapter == null) {
-              break;
-            }
-
-            if (isDiscovering) {
-              if (bluetoothAdapter.isEnabled()) {
-                stopDiscovery();
-              }
-            } else {
-              if (bluetoothAdapter.isEnabled()) {
-                startDiscovery();
-              } else {
-                startBluetoothEnableRequest(request_action_discovering);
-              }
-            }
-
-            updateMenu();
+          case R.id.start_discovering:
+            startDiscovery();
+            break;
+          case R.id.stop_discovering:
+            stopDiscovery();
             break;
           default:
             return false;
@@ -206,13 +188,14 @@ public class MainActivity extends AppCompatActivity {
         return true;
       }
     });
+    updateMenu(false);
   }
 
-  private void updateMenu() {
-    MenuItem item = toolbar.getMenu().findItem(R.id.action_discovering);
-    if (item != null) {
-      item.setTitle(isDiscovering ? "停止扫描" : "重新扫描");
-    }
+  private void updateMenu(boolean isDiscovering) {
+    BluetoothAdapter bluetoothAdapter = getBluetoothAdapter();
+    boolean hasBluetooth = bluetoothAdapter != null;
+    toolbar.getMenu().findItem(R.id.start_discovering).setVisible(hasBluetooth && !isDiscovering);
+    toolbar.getMenu().findItem(R.id.stop_discovering).setVisible(hasBluetooth && isDiscovering);
   }
 
   private void setupRv() {
@@ -236,36 +219,52 @@ public class MainActivity extends AppCompatActivity {
     itemDelegate.setOnItemClickListener(new OnItemClickListener<BluetoothDevice>() {
       @Override
       public void onItemClick(View view, int position, final BluetoothDevice device) {
-        int bondState = device.getBondState();
-        switch (bondState) {
+        switch (device.getBondState()) {
           case BluetoothDevice.BOND_BONDED:
-            // TODO: 2017/1/18 navigate to control
-            break;
-          case BluetoothDevice.BOND_BONDING:
-            //do nothing
-            if (debug) Log.d(TAG, "BOND_BONDING is here");
+            Intent data = new Intent();
+            data.putExtra(RESULT_BLUETOOTH_DEVICE, device);
+            setResult(RESULT_OK, data);
+            finish();
             break;
           case BluetoothDevice.BOND_NONE:
-            if (Build.VERSION.SDK_INT >= 19) {
-              device.createBond();
-            } else {
-              try {
-                Method createBondMethod = BluetoothDevice.class.getMethod("createBond");
-                createBondMethod.invoke(device);
-                if (debug) Log.d(TAG, "BOND_NONE createBond in < 19");
-              } catch (NoSuchMethodException e) {
-                e.printStackTrace();
-              } catch (InvocationTargetException e) {
-                e.printStackTrace();
-              } catch (IllegalAccessException e) {
-                e.printStackTrace();
-              }
-            }
+            showPairPopView(view, device);
             break;
         }
       }
     });
     adapter = BAdapter.builder().itemDelegate(itemDelegate).dataSource(dataSource).build();
     recyclerView.setAdapter(adapter);
+  }
+
+  private void showPairPopView(final View view, final BluetoothDevice device) {
+    PopupMenu popupMenu = new PopupMenu(view.getContext(), view);
+    popupMenu.inflate(R.menu.device_click);
+    popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+      @Override
+      public boolean onMenuItemClick(MenuItem item) {
+        switch (item.getItemId()) {
+          case R.id.device_pair:
+            if (device.getBondState() == BluetoothDevice.BOND_NONE) {
+              if (Build.VERSION.SDK_INT >= 19) {
+                device.createBond();
+              } else {
+                try {
+                  Method createBondMethod = BluetoothDevice.class.getMethod("createBond");
+                  createBondMethod.invoke(device);
+                  if (debug) Log.d(TAG, "BOND_NONE createBond in < 19");
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  //do nothing
+                }
+              }
+            }
+            break;
+          default:
+            return false;
+        }
+        return true;
+      }
+    });
+    popupMenu.show();
   }
 }
